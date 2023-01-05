@@ -1,0 +1,267 @@
+# pipette sweep
+# Version 1
+# Original 28 May 2018
+# Mod NO 2018-10-03
+
+#n_water =1.34
+# n_glass=1.47
+# n_glyc = 1.47
+# n_tde=1.52
+
+
+clear;
+deleteall;
+switchtolayout;
+
+fnamebase = "JM317_d6-10_TDEWAT_TDEWAT_POLAR_00";
+#system("mkdir JM317");
+cd(".\JM317");
+
+
+c0 = 299792458;
+WL = [1.175,1.225]*1e-6;
+N = 41;
+WLV = linspace(WL(1),WL(2),N);
+F = c0/WLV;
+src_na = 1.0;
+src_dist = -8.5e-6;
+d_lens = 10e-3;
+#d_beam = 4e-3;
+d_beam = 8e-3;
+nopw = 900;
+setglobalsource("wavelength start",WL(1));
+setglobalsource("wavelength stop",WL(2));
+setglobalsource("eliminate discontinuities",true);
+setglobalsource("optimize for short pulse",false);
+setglobalmonitor("use linear wavelength spacing",true); 
+setglobalmonitor("use source limits",true);
+setglobalmonitor("frequency points",N);
+
+addfdtd;
+FDTDX = [-12,12]*1e-6;
+FDTDY = [-12,12]*1e-6;
+FDTDZ = [-8.5,8]*1e-6;
+set("x min",FDTDX(1));
+set("x max",FDTDX(2));
+set("y min",FDTDY(1));
+set("y max",FDTDY(2));
+set("z min",FDTDZ(1));
+set("z max",FDTDZ(2));
+#set("mesh accuracy",8);
+set("mesh accuracy",5);
+set("dt stability factor",0.5);
+set("simulation time",400e-15);
+set("background index",1.33);
+set("auto shutoff min",1e-8); # requires some testing 
+set("bfast alpha",1.33);
+
+addgaussian;
+SRCX = FDTDX;
+SRCY = FDTDY;
+SRCZ = FDTDZ(1);
+set("override global source settings",false);
+set("injection axis","z");
+set("direction","forward");
+set("x min",SRCX(1));
+set("x max",SRCX(2));
+set("y min",SRCY(1));
+set("y max",SRCY(2));
+set("z",SRCZ(1));
+set("use scalar approximation",false);
+set("use thin lens",true);
+set("NA",src_na);
+set("distance from focus",src_dist);
+set("fill lens",false);
+set("lens diameter",d_lens);
+set("beam diameter",d_beam);
+set("number of plane waves",nopw);
+set("polarization angle",0);
+
+save(fnamebase);
+
+scan_range = 12e-6;
+scan_step = 5e-7;
+restart=-9e-7;
+#param = restart:scan_step:scan_range;
+param = 0:scan_step:scan_range;
+
+# positions of point time monitors
+
+X = linspace(-10.5e-6,10.5e-6,31);
+Y = linspace(-10.5e-6,10.5e-6,31);
+Z = 7.9e-6;
+
+for (x = 1:length(param)) {
+   strr=1+(scan_range/scan_step)+(1/scan_step)*param(x);
+    load(fnamebase);
+    switchtolayout;
+    if (strr<10) {
+    fnameout = fnamebase + "_width_0" + num2str(strr);
+    }
+    else
+    {
+    fnameout = fnamebase + "_width_" + num2str(strr);
+    }
+    save(fnameout);
+
+#set different colors for the different materials  
+
+setmaterial("WATER","color",[0,1,1,0]);
+setmaterial("TDEWAT_NL","color",[1,0,0,0]);
+setmaterial("WATER_NL","color",[0,0,1,0]);
+setmaterial("SILICE_NL","color",[1,1,1,0]);
+ 
+ addrect;
+set("name","Water");
+set("material","WATER");
+set("x min",FDTDX(1));
+set("x max",FDTDX(2));
+set("y min",FDTDY(1));
+set("y max",FDTDY(2));
+set("z min",FDTDZ(1));
+set("z max",FDTDZ(1)+5e-7);
+set("override mesh order from material database",1);
+set("mesh order",1); 
+
+addrect;
+set("name","Water");
+set("material","WATER");
+set("x min",FDTDX(1));
+set("x max",FDTDX(2));
+set("y min",FDTDY(1));
+set("y max",FDTDY(2));
+set("z min",FDTDZ(2)-5e-7);
+set("z max",FDTDZ(2));
+set("override mesh order from material database",1);
+set("mesh order",1); 
+ 
+
+addrect;
+set("name","Water");
+set("material","WATER");
+set("x min",FDTDX(1));
+set("x max",FDTDX(2));
+set("y min",FDTDY(1));
+set("y max",FDTDY(2));
+set("z min",FDTDZ(1)+5e-7);
+set("z max",FDTDZ(2)-5e-7);
+set("override mesh order from material database",1);
+set("mesh order",10); 
+
+addrect;
+set("name","Water_NL");
+set("material","TDEWAT_NL");
+set("x min",-10e-6);
+set("x max",10e-6);
+set("y min",-10e-6);
+set("y max",10e-6);
+set("z min",-7e-6);
+set("z max",7e-6);
+set("override mesh order from material database",1);
+set("mesh order",8); 
+
+
+# add first inner cylinder 
+addring;
+set("name","inner_ring");
+#set("material","Axon");
+set("material","TDEWAT_NL");
+set("x",param(x));
+set("y",0e-6);
+set("inner radius",0);
+set("outer radius",6e-6);
+set("z",0);
+set("z span",15e-6);
+set("theta start",0);
+set("theta stop",360);
+set("first axis","x");
+set("rotation 1",90);
+set("override mesh order from material database",1);
+set("mesh order",3); 
+
+addring;
+set("name","outer_ring");
+set("material","SILICE_NL");
+set("x",param(x));
+set("y",0e-6);
+set("inner radius",6e-6);
+set("outer radius",10e-6);
+set("z",0);
+set("z span",15e-6);
+set("theta start",0);
+set("theta stop",360);
+set("first axis","x");
+set("rotation 1",90);
+set("override mesh order from material database",1);
+set("mesh order",4); 
+
+
+#}
+
+    # add point time monitors
+
+    tmonames = cell(length(X)*length(Y)*length(Z));
+    ll = 0;
+    for (xx = 1:length(X)) {
+        for (yy = 1:length(Y)) {
+            for (zz = 1:length(Z)) {
+                ll = ll + 1;
+                addtime;
+                select("monitor");
+                moname = "t monitor x = " + num2str(X(xx)*1e6)
+                                + " um"
+                                + " y = " + num2str(Y(yy)*1e6)
+                                + " um"
+                                + " z = " + num2str(Z(zz)*1e6)
+                                + " um";
+                tmonames{ll} = moname;
+                set("name",moname);
+                    select(moname);
+                    set("x",X(xx));
+                    set("y",Y(yy));
+                set("z",Z(zz));
+                set("output Hx",0);
+                set("output Hy",0);
+                set("output Hz",0);}}}
+
+    # run simulation
+
+    pause(20);
+    run;
+
+    # read point time monitors
+
+    tspectra = cell(length(X)*length(Y)*length(Z));
+    tmonitor = struct;
+    ll = 0;
+    for (xx = 1:length(X)) {
+        for (yy = 1:length(Y)) {
+            for (zz = 1:length(Z)) {
+                ll = ll + 1;
+                moname = "t monitor x = " + num2str(X(xx)*1e6)
+                                + " um"
+                                + " y = " + num2str(Y(yy)*1e6)
+                                + " um"
+                                + " z = " + num2str(Z(zz)*1e6)
+                                + " um";
+                tmonitor.monitor_name = moname;
+                tmonitor.x = X(xx);
+                tmonitor.y = Y(yy);
+                tmonitor.z = Z(zz);
+                tmonitor.spectrum = getresult(moname,
+                                                  "spectrum");
+                tspectra{ll} = tmonitor;}}}
+
+    # read simulation parameters
+
+    select("source");
+    source_center_wavelength_m = get("center wavelength");
+    source_pol_angle_deg = get("polarization angle");
+
+    # housekeeping and save
+      fnamematlab = fnameout + '_data';
+    matlabsave(fnamematlab);
+       switchtolayout;
+    save(fnameout);
+
+}

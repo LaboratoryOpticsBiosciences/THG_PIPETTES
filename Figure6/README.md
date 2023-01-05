@@ -1,1 +1,1 @@
-Code used to generate Figure 6
+Lumerical FDTD scipts  used to run the simulations to generate Figure 6

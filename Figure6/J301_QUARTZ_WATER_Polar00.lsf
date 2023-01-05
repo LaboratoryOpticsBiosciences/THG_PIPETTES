@@ -1,0 +1,254 @@
+# Interface Axiale Manips Josephine
+#Quartz on one side (n=1.449 - chi3=2e-5 )
+#INDEX_X material on the other side
+
+
+clear;
+switchtolayout;
+deleteall;
+
+fnamebase = "JM301_QUARTZ_WATER_Polar00";
+cd("JM301");
+
+
+c0 = 299792458;
+WL = [1.175,1.225]*1e-6;
+N = 41;
+WLV = linspace(WL(1),WL(2),N);
+F = c0/WLV;
+src_na = 0.95;
+src_dist = -6.5e-6;
+d_lens = 10e-3;
+#d_beam = 4e-3;
+d_beam = 8e-3;
+nopw = 600;
+setglobalsource("wavelength start",WL(1));
+setglobalsource("wavelength stop",WL(2));
+setglobalsource("eliminate discontinuities",true);
+setglobalsource("optimize for short pulse",false);
+setglobalmonitor("use linear wavelength spacing",true);
+setglobalmonitor("use source limits",true);
+setglobalmonitor("frequency points",N);
+
+addfdtd;
+FDTDX = [-9,9]*1e-6;
+FDTDY = [-9,9]*1e-6;
+FDTDZ = [-6.5,6.5]*1e-6;
+set("x min",FDTDX(1));
+set("x max",FDTDX(2));
+set("y min",FDTDY(1));
+set("y max",FDTDY(2));
+set("z min",FDTDZ(1));
+set("z max",FDTDZ(2));
+#set("mesh accuracy",8);
+set("mesh accuracy",5);
+set("dt stability factor",0.2);
+set("simulation time",300e-15);
+set("auto shutoff min",1e-7); # requires some testing
+set("bfast alpha",1.33);
+
+
+addgaussian;
+SRCX = FDTDX;
+SRCY = FDTDY;
+SRCZ = FDTDZ(1);
+set("override global source settings",false);
+set("injection axis","z");
+set("direction","forward");
+set("x min",SRCX(1));
+set("x max",SRCX(2));
+set("y min",SRCY(1));
+set("y max",SRCY(2));
+set("z",SRCZ(1));
+set("use scalar approximation",false);
+set("use thin lens",true);
+set("NA",src_na);
+set("distance from focus",src_dist);
+set("fill lens",false);
+set("lens diameter",d_lens);
+set("beam diameter",d_beam);
+set("number of plane waves",nopw);
+set("polarization angle",0);
+
+save(fnamebase);
+
+scan_range = 2e-6;
+scan_step = 2e-7;
+#restart=-9e-7;
+#param = restart:scan_step:scan_range;
+param = 0:scan_step:scan_range;
+
+# positions of point time monitors
+
+X = linspace(-7.5e-6,7.5e-6,31);
+Y = linspace(-7.5e-6,7.5e-6,31);
+Z = 6.4e-6;
+
+for (x = 1:length(param)) {
+    strr=1+(scan_range/scan_step)+(1/scan_step)*param(x);
+    load(fnamebase);
+    switchtolayout;
+    if (strr<10) {
+        fnameout = fnamebase + "_radius_0" + num2str(strr);
+    }
+    else
+    {
+        fnameout = fnamebase + "_radius_" + num2str(strr);
+    }
+    save(fnameout);
+    
+    #set different colors for the different materials
+    
+    #setmaterial("H2O (Water) - Palik","color",[1,0,0,0]);
+    setmaterial("QUARTZ","color",[0,1,0,0]); #n=1.34
+    setmaterial("QUARTZ_NL","color",[0,1,0.1,0]);
+    setmaterial("WATER_NL","color",[1,0.1,0,0]);
+    setmaterial("WATER_INC","color",[1,0,0,0]);
+    
+    # add two rectangles at the begining and end of the domain
+    addrect;
+    set("name","Water");
+    set("material","WATER_INC");
+    set("x min",FDTDX(1));
+    set("x max",FDTDX(2));
+    set("y min",FDTDY(1));
+    set("y max",FDTDY(2));
+    set("z min",FDTDZ(1));
+    set("z max",FDTDZ(1)+5e-7);
+    
+    addrect;
+    set("name","Water");
+    set("material","WATER_INC");
+    set("x min",FDTDX(1));
+    set("x max",FDTDX(2));
+    set("y min",FDTDY(1));
+    set("y max",FDTDY(2));
+    set("z min",FDTDZ(2)-5e-7);
+    set("z max",FDTDZ(2));
+    
+    # add water and quartz on the sides
+    
+    # add two rectangles at the edge of the domain of interest
+    
+    addrect;
+    set("name","QUARTZ");
+    set("material","QUARTZ");
+    set("x min",FDTDX(1));
+    set("x max",-scan_range);
+    set("y min",FDTDY(1));
+    set("y max",FDTDY(2));
+    set("z min",FDTDZ(1)+5e-7);
+    set("z max",FDTDZ(2)-5e-7);
+    
+    addrect;
+    set("name","WATER");
+    set("material","WATER_INC");
+    set("x min",scan_range);
+    set("x max",FDTDX(2));
+    set("y min",FDTDY(1));
+    set("y max",FDTDY(2));
+    set("z min",FDTDZ(1)+5e-7);
+    set("z max",FDTDZ(2)-5e-7);
+    
+    
+    
+    # add QUARTZ NL
+    
+    addrect;
+    set("name","QUARTZ_NL");
+    set("material","QUARTZ_NL");
+    set("x min",-scan_range);
+    set("x max",param(x));
+    set("y min",FDTDY(1));
+    set("y max",FDTDY(2));
+    set("z min",FDTDZ(1)+5e-7);
+    set("z max",FDTDZ(2)-5e-7);
+    
+    
+    
+    # add INDEX138 NL
+    
+    addrect;
+    set("name","WATER_NL");
+    set("material","WATER_NL");
+    set("x min",param(x));
+    set("x max",scan_range);
+    set("y min",FDTDY(1));
+    set("y max",FDTDY(2));
+    set("z min",FDTDZ(1)+5e-7);
+    set("z max",FDTDZ(2)-5e-7);
+    
+    
+    
+    
+    # add point time monitors
+    
+    tmonames = cell(length(X)*length(Y)*length(Z));
+    ll = 0;
+    for (xx = 1:length(X)) {
+        for (yy = 1:length(Y)) {
+            for (zz = 1:length(Z)) {
+                ll = ll + 1;
+                addtime;
+                select("monitor");
+                moname = "t monitor x = " + num2str(X(xx)*1e6)
+                + " um"
+                + " y = " + num2str(Y(yy)*1e6)
+                + " um"
+                + " z = " + num2str(Z(zz)*1e6)
+                + " um";
+                tmonames{ll} = moname;
+                set("name",moname);
+                select(moname);
+                set("x",X(xx));
+                set("y",Y(yy));
+                set("z",Z(zz)) ;
+                set("output Hx",0);
+                set("output Hy",0);
+                set("output Hz",0);
+            }
+        }
+    }
+    
+    run;
+    
+    # read point time monitors
+    
+    tspectra = cell(length(X)*length(Y)*length(Z));
+    tmonitor = struct;
+    ll = 0;
+    for (xx = 1:length(X)) {
+        for (yy = 1:length(Y)) {
+            for (zz = 1:length(Z)) {
+                ll = ll + 1;
+                moname = "t monitor x = " + num2str(X(xx)*1e6)
+                + " um"
+                + " y = " + num2str(Y(yy)*1e6)
+                + " um"
+                + " z = " + num2str(Z(zz)*1e6)
+                + " um";
+                tmonitor.monitor_name = moname;
+                tmonitor.x = X(xx);
+                tmonitor.y = Y(yy);
+                tmonitor.z = Z(zz);
+                tmonitor.spectrum = getresult(moname,
+                "spectrum");
+                tspectra{ll} = tmonitor;
+            }
+        }
+    }
+    
+    # read simulation parameters
+    
+    select("source");
+    source_center_wavelength_m = get("center wavelength");
+    source_pol_angle_deg = get("polarization angle");
+    
+    # housekeeping and save
+    
+    fnamematlab = fnameout + '_data';
+    matlabsave(fnamematlab);
+    switchtolayout;
+    save(fnameout);
+    pause(60);
+}
