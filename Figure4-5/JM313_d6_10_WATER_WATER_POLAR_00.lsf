@@ -13,9 +13,9 @@ clear;
 deleteall;
 switchtolayout;
 
-fnamebase = "JM313odd_d6-10_WATER_WATER_POLAR_00";
-system("mkdir JM313odd");
-cd(".\JM313odd");
+fnamebase = "JM313_d6-10_WATER_WATER_POLAR_00";
+system("mkdir JM313");
+cd(".\JM313");
 
 
 c0 = 299792458;
@@ -80,10 +80,8 @@ set("polarization angle",0);
 save(fnamebase);
 
 scan_range = 12e-6;
-scan_step = 5e-7;
-restart=-9e-7;
-#param = restart:scan_step:scan_range;
-param = 5.25e-6:scan_step:scan_range;
+scan_step = 2.5e-7;
+param = 5e-6:scan_step:scan_range;
 
 # positions of point time monitors
 
